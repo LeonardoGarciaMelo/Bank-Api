@@ -1,0 +1,133 @@
+package com.bankApi.service;
+
+import com.bankApi.model.Account;
+import com.bankApi.model.Transaction;
+import com.bankApi.model.TransactionType;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
+import org.jboss.logging.Logger;
+import java.math.BigDecimal;
+
+/**
+ * Core engine for financial movements and ledger management.
+ * <p>
+ * Ensures strict compliance with ACID properties during transfers.
+ * Prevents overdrafts and maintains an immutable audit trail of every movement.
+ * </p>
+ */
+@ApplicationScoped
+public class TransactionService {
+
+    private static final Logger log = Logger.getLogger(TransactionService.class);
+
+    /**
+     * Executes an atomic transfer between two internal accounts.
+     * <p>
+     * 1. Validates funds in the origin account.
+     * 2. Adjusts balances using BigDecimal math.
+     * 3. Persists an immutable Transaction record.
+     * </p>
+     *
+     * @param originAccountNumber Origin account number.
+     * @param destinationAccountNumber Destination account number.
+     * @param amount Non-negative value to transfer.
+     * @return The persisted {@link Transaction} receipt.
+     */
+    @Transactional
+    public Transaction transfer(Long originAccountNumber, Long destinationAccountNumber, BigDecimal amount) {
+        log.info(String.format("Solicitação de transferência: %d -> %d | Valor: %s", originAccountNumber,
+                destinationAccountNumber, amount));
+
+        // Basic business validation
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("Tentativa de transferência com valor zero ou negativo.");
+            throw new WebApplicationException("Transfer amount must be greater than zero", Response.Status.BAD_REQUEST);
+        }
+        if (originAccountNumber.equals(destinationAccountNumber)) {
+            log.warn("Tentativa de transferência para a própria conta.");
+            throw new WebApplicationException("Cannot transfer to the same account", Response.Status.BAD_REQUEST);
+        }
+
+        // Search for the accounts
+        Account originAccount = Account.findByNumber(originAccountNumber);
+        if (originAccount == null) {
+            log.warn("Conta de origem não encontrada: " + originAccountNumber);
+            throw new WebApplicationException("Origin account not found", Response.Status.NOT_FOUND);
+        }
+
+        Account destAccount = Account.findByNumber(destinationAccountNumber);
+        if (destAccount == null) {
+            log.warn("Conta de destino não encontrada: " + destinationAccountNumber);
+            throw new WebApplicationException("Destination account not found", Response.Status.NOT_FOUND);
+        }
+
+        // Balance validation
+        if (originAccount.balance.compareTo(amount) < 0) {
+            log.warn(String.format("Saldo insuficiente. Conta %d tentou transferir R$ %s mas tem R$ %s",
+                    originAccountNumber, amount.toString(), originAccount.balance.toString()));
+            throw new WebApplicationException("Insufficient funds", Response.Status.PAYMENT_REQUIRED); // Retorna 402!
+        }
+
+        // Fincancial movement
+        log.info("Processando movimentação financeira...");
+        originAccount.balance = originAccount.balance.subtract(amount);
+        destAccount.balance = destAccount.balance.add(amount);
+
+        // Receipt generation
+        Transaction transaction = new Transaction();
+        transaction.originAccount = originAccount;
+        transaction.destinationAccount = destAccount;
+        transaction.value = amount;
+        transaction.type = TransactionType.TRANSFER;
+        transaction.description = "Transferência entre contas";
+
+        transaction.persist();
+
+        log.info("Transferência concluída com sucesso! ID da Transação: " + transaction.id);
+
+        return transaction;
+    }
+
+    /**
+     * Executes a cash deposit into a specific account.
+     * <p>
+     * Increases the account balance and records an immutable Transaction of type DEPOSIT.
+     * The origin account is intentionally left null as the funds originate externally.
+     * </p>
+     *
+     * @param toNumber The destination account number.
+     * @param amount The non-negative value to deposit.
+     * @return The persisted {@link Transaction} receipt.
+     */
+    @Transactional
+    public Transaction deposit(Long toNumber, BigDecimal amount) {
+        log.info(String.format("Solicitação de depósito: Conta %d | Valor: %s", toNumber, amount));
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new WebApplicationException("Deposit amount must be positive", Response.Status.BAD_REQUEST);
+        }
+
+        Account account = Account.findByNumber(toNumber);
+
+        if (account == null) {
+            log.warn("Depósito falhou: Conta não encontrada.");
+            throw new WebApplicationException("Account not found", Response.Status.NOT_FOUND);
+        }
+
+        account.balance = account.balance.add(amount);
+
+        Transaction transaction = new Transaction();
+        transaction.destinationAccount = account;
+        transaction.originAccount = null;
+        transaction.value = amount;
+        transaction.type = TransactionType.DEPOSIT;
+        transaction.description = "Depósito em espécie/externo";
+
+        transaction.persist();
+
+        log.info("Depósito finalizado. ID da transação: " + transaction.id);
+        return transaction;
+    }
+}
