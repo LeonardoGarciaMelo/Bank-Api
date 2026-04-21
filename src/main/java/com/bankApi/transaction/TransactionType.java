@@ -1,4 +1,4 @@
-package com.bankApi.model;
+package com.bankApi.transaction;
 
 /**
  * Defines the strict, permitted types of transactions in the banking system.

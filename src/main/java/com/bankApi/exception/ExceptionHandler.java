@@ -1,6 +1,6 @@
 package com.bankApi.exception;
 
-import com.bankApi.dto.ErrorResponseDTO;
+import com.bankApi.exception.dto.ErrorResponseDTO;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;

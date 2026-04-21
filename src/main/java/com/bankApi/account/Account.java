@@ -1,5 +1,6 @@
-package com.bankApi.model;
+package com.bankApi.account;
 
+import com.bankApi.client.Client;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import java.math.BigDecimal;

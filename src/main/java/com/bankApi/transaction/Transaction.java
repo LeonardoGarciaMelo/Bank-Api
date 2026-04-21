@@ -1,5 +1,6 @@
-package com.bankApi.model;
+package com.bankApi.transaction;
 
+import com.bankApi.account.Account;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 

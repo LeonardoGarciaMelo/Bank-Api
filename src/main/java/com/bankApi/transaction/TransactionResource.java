@@ -1,11 +1,6 @@
-package com.bankApi.resource;
+package com.bankApi.transaction;
 
-import com.bankApi.dto.transaction.DepositRequestDTO;
-import com.bankApi.dto.transaction.DepositResponseDTO;
-import com.bankApi.dto.transaction.TransferRequestDTO;
-import com.bankApi.dto.transaction.TransferResponseDTO;
-import com.bankApi.model.Transaction;
-import com.bankApi.service.TransactionService;
+import com.bankApi.transaction.dto.*;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
@@ -66,6 +61,30 @@ public class TransactionResource {
         DepositResponseDTO receipt = new DepositResponseDTO(
                 transaction.id,
                 transaction.destinationAccount.number,
+                transaction.value,
+                transaction.date,
+                transaction.type.name()
+        );
+
+        return Response.status(Response.Status.CREATED).entity(receipt).build();
+    }
+
+    /**
+     * Executes an ATM cash withdrawal.
+     * @return 201 Created with the clean receipt.
+     */
+    @POST
+    @Path("/withdraw")
+    public Response withdraw(@Valid WithdrawalRequestDTO dto) {
+
+        Transaction transaction = transactionService.withdraw(
+                dto.originAccountNumber(),
+                dto.amount()
+        );
+
+        WithdrawalResponseDTO receipt = new WithdrawalResponseDTO(
+                transaction.id,
+                transaction.originAccount.number,
                 transaction.value,
                 transaction.date,
                 transaction.type.name()

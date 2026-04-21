@@ -1,5 +1,6 @@
-package com.bankApi.model;
+package com.bankApi.client;
 
+import com.bankApi.credential.Credential;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import java.util.UUID;

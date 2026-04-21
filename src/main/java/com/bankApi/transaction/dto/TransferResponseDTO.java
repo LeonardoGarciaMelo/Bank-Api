@@ -1,4 +1,4 @@
-package com.bankApi.dto.transaction;
+package com.bankApi.transaction.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

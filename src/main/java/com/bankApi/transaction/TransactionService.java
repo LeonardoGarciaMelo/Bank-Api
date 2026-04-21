@@ -1,8 +1,6 @@
-package com.bankApi.service;
+package com.bankApi.transaction;
 
-import com.bankApi.model.Account;
-import com.bankApi.model.Transaction;
-import com.bankApi.model.TransactionType;
+import com.bankApi.account.Account;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
@@ -128,6 +126,49 @@ public class TransactionService {
         transaction.persist();
 
         log.info("Depósito finalizado. ID da transação: " + transaction.id);
+        return transaction;
+    }
+
+    /**
+     * Executes a cash withdrawal from a specific account.
+     * <p>
+     * Decreases the account balance if funds are available and records a WITHDRAWAL transaction.
+     * The destination account is null as the funds leave the system.
+     * </p>
+     */
+    @Transactional
+    public Transaction withdraw(Long fromNumber, BigDecimal amount) {
+        log.info(String.format("Solicitação de saque: Conta %d | Valor: %s", fromNumber, amount));
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new WebApplicationException("Withdrawal amount must be positive", Response.Status.BAD_REQUEST);
+        }
+
+        Account account = Account.findByNumber(fromNumber);
+
+        if (account == null) {
+            log.warn("Saque falhou: Conta não encontrada.");
+            throw new WebApplicationException("Account not found", Response.Status.NOT_FOUND);
+        }
+
+        // Valdation
+        if (account.balance.compareTo(amount) < 0) {
+            log.warn("Saque abortado: Saldo insuficiente na conta " + fromNumber);
+            throw new WebApplicationException("Insufficient funds", Response.Status.PAYMENT_REQUIRED);
+        }
+
+        account.balance = account.balance.subtract(amount);
+
+        Transaction transaction = new Transaction();
+        transaction.originAccount = account;
+        transaction.destinationAccount = null; // Money leaves the bank
+        transaction.value = amount;
+        transaction.type = TransactionType.WITHDRAWAL;
+        transaction.description = "Saque em espécie/caixa eletrônico";
+
+        transaction.persist();
+
+        log.info("Saque finalizado. ID da transação: " + transaction.id);
         return transaction;
     }
 }

@@ -1,4 +1,4 @@
-package com.bankApi.model;
+package com.bankApi.credential;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;

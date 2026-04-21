@@ -1,8 +1,6 @@
-package com.bankApi.resource;
+package com.bankApi.client;
 
-import com.bankApi.dto.ClientRegistrationDTO;
-import com.bankApi.model.Client;
-import com.bankApi.service.ClientService;
+import com.bankApi.client.dto.ClientRegistrationDTO;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;

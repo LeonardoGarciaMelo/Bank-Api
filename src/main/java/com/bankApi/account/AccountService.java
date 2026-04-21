@@ -1,7 +1,6 @@
-package com.bankApi.service;
+package com.bankApi.account;
 
-import com.bankApi.model.Account;
-import com.bankApi.model.Client;
+import com.bankApi.client.Client;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;

@@ -1,5 +1,6 @@
-package com.bankApi.service;
+package com.bankApi.client;
 
+import com.bankApi.account.AccountService;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -7,9 +8,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
-import com.bankApi.dto.ClientRegistrationDTO;
-import com.bankApi.model.Client;
-import com.bankApi.model.Credential;
+import com.bankApi.client.dto.ClientRegistrationDTO;
+import com.bankApi.credential.Credential;
 
 /**
  * Service layer responsible for handling client business logic.

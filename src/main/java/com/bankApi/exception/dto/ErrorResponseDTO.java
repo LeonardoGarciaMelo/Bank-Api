@@ -1,4 +1,4 @@
-package com.bankApi.dto;
+package com.bankApi.exception.dto;
 
 import java.time.LocalDateTime;
 
