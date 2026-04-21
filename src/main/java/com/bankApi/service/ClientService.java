@@ -2,6 +2,7 @@ package com.bankApi.service;
 
 import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
@@ -18,6 +19,9 @@ import com.bankApi.model.Credential;
 public class ClientService {
 
     private static final Logger log = Logger.getLogger(ClientService.class);
+
+    @Inject
+    AccountService accountService;
 
     /**
      * Registers a new client and their credentials in a single transaction.
@@ -55,6 +59,9 @@ public class ClientService {
         client.cpf = dto.cpf();
         client.credential = credential;
         client.persist();
+
+        // Creating Client Account
+        accountService.createAccount(client);
 
         log.info("Sucesso! Cliente registrado com ID: " + client.clientId);
         return client;
