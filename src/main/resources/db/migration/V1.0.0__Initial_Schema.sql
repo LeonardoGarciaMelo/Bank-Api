@@ -15,7 +15,7 @@ CREATE TABLE "client" (
                           "client_id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                           "credential_id" UUID UNIQUE NOT NULL,
                           "name" VARCHAR(255) NOT NULL,
-                          "cpf" VARCHAR(14) UNIQUE NOT NULL,
+                          "cpf" VARCHAR(11) UNIQUE NOT NULL,
                           FOREIGN KEY ("credential_id") REFERENCES "credentials"("id")
 );
 

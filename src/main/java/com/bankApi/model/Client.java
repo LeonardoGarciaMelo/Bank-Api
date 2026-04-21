@@ -31,7 +31,7 @@ public class Client extends PanacheEntityBase {
     @Column(nullable = false, length = 255)
     public String name;
 
-    @Column(unique = true, nullable = false, length = 14)
+    @Column(unique = true, nullable = false, length = 11)
     public String cpf;
 
     /**

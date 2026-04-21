@@ -1,6 +1,7 @@
 package com.bankApi.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -19,7 +20,7 @@ public record ClientRegistrationDTO(
         String name,
 
         @NotBlank(message = "CPF is required")
-        @Size(min = 11, max = 14, message = "Invalid CPF format")
+        @Pattern(regexp = "\\d{11}", message = "CPF must contain exactly 11 numeric digits (no dots or dashes)")
         String cpf
 ) {
 }
