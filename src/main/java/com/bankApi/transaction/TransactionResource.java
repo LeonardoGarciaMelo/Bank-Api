@@ -7,6 +7,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.UUID;
+
 /**
  * REST API Endpoints for financial operations.
  */
@@ -90,6 +92,44 @@ public class TransactionResource {
                 transaction.type.name()
         );
 
+        return Response.status(Response.Status.CREATED).entity(receipt).build();
+    }
+
+    /**
+     * Charges an administrative fee to a client account.
+     *
+     * @param dto Validated payload with account details, amount, and optional description.
+     * @return 201 Created with {@link FeeResponseDTO}.
+     */
+    @POST
+    @Path("/fee")
+    public Response chargeFee(@Valid FeeRequestDTO dto) {
+        Transaction transaction = transactionService.chargeFee(
+                dto.originAccountNumber(),
+                dto.amount(),
+                dto.description()
+        );
+
+        FeeResponseDTO receipt = new FeeResponseDTO(
+                transaction.id, transaction.originAccount.number, transaction.value, transaction.date, transaction.description, transaction.type.name()
+        );
+        return Response.status(Response.Status.CREATED).entity(receipt).build();
+    }
+
+    /**
+     * Reverses a successfully completed transaction.
+     *
+     * @param originaltransactionId The path parameter representing the UUID of the transaction to refund.
+     * @return 201 Created with {@link RefundResponseDTO} linking back to the original transaction.
+     */
+    @POST
+    @Path("/{id}/refund")
+    public Response refundTransaction(@PathParam("id") UUID originaltransactionId) {
+        Transaction transaction = transactionService.refund(originaltransactionId);
+
+        RefundResponseDTO receipt = new RefundResponseDTO(
+                transaction.id, transaction.originalTransaction.id, transaction.value, transaction.date, transaction.type.name()
+        );
         return Response.status(Response.Status.CREATED).entity(receipt).build();
     }
 }

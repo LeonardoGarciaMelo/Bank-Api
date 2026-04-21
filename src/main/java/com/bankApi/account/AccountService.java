@@ -1,14 +1,19 @@
 package com.bankApi.account;
 
+import com.bankApi.account.dto.BalanceEffect;
+import com.bankApi.account.dto.StatementItemDTO;
+import com.bankApi.account.dto.StatementResponseDTO;
 import com.bankApi.client.Client;
+import com.bankApi.transaction.Transaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
-
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * Service layer responsible for the lifecycle of financial accounts.
@@ -73,5 +78,42 @@ public class AccountService {
 
         log.error("Falha ao gerar número de conta único após 10 tentativas.");
         throw new WebApplicationException("Error generating account number", Response.Status.INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     Generates a complete bank statement for an account.
+     * <p>
+     * Retrieves the immutable transaction history and dynamically calculates
+     * the effect (Credit/Debit) from the perspective of the requesting account.
+     * </p>
+     * @param accountNumber The account number passed in the URL.
+     * @return DTO containing the current balance and formatted history.
+     */
+    public StatementResponseDTO getStatement(Long accountNumber) {
+        log.info("Gerando extrato para a conta: " + accountNumber);
+
+        Account account = Account.findByNumber(accountNumber);
+        if (account == null) {
+            throw new WebApplicationException("Account not found", Response.Status.NOT_FOUND);
+        }
+
+        List<Transaction> transactions = Transaction.getStatement(account);
+
+        List<StatementItemDTO> history = transactions.stream().map(transaction -> {
+            boolean isCredit = transaction.destinationAccount != null && transaction.destinationAccount.id.equals(account.id);
+            BalanceEffect effect = isCredit ? BalanceEffect.CREDIT : BalanceEffect.DEBIT;
+
+            return new StatementItemDTO(
+                    transaction.id,
+                    transaction.date,
+                    transaction.type.name(),
+                    transaction.value,
+                    transaction.description,
+                    effect
+            );
+        }).collect(Collectors.toList());
+
+        log.info("Extrato gerado. Total de registros: " + history.size());
+        return new StatementResponseDTO(account.number, account.balance, history);
     }
 }

@@ -7,6 +7,7 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Core engine for financial movements and ledger management.
@@ -170,5 +171,96 @@ public class TransactionService {
 
         log.info("Saque finalizado. ID da transação: " + transaction.id);
         return transaction;
+    }
+
+    /**
+     * Charges an administrative or service fee to an account.
+     * <p>
+     * Acts similarly to a withdrawal, but is categorized differently for audit and revenue tracking.
+     * </p>
+     *
+     * @param fromNumber The account to be charged.
+     * @param amount The fee amount.
+     * @param description Context for the fee (e.g., "Monthly maintenance").
+     * @return The persisted {@link Transaction} receipt.
+     */
+    @Transactional
+    public Transaction chargeFee(Long fromNumber, BigDecimal amount, String description) {
+        log.info(String.format("Cobrança de tarifa: Conta %d | Valor: %s", fromNumber, amount));
+
+        Account account = Account.findByNumber(fromNumber);
+        if (account == null) throw new WebApplicationException("Account not found", Response.Status.NOT_FOUND);
+
+        if (account.balance.compareTo(amount) < 0) {
+            throw new WebApplicationException("Insufficient funds for fee", Response.Status.PAYMENT_REQUIRED);
+        }
+
+        account.balance = account.balance.subtract(amount);
+
+        Transaction transaction = new Transaction();
+        transaction.originAccount = account;
+        transaction.destinationAccount = null;
+        transaction.value = amount;
+        transaction.type = TransactionType.FEE;
+        transaction.description = description != null ? description : "Tarifa bancária padrão";
+
+        transaction.persist();
+        return transaction;
+    }
+
+    /**
+     * Reverses a previous transaction using double-entry bookkeeping principles.
+     * <p>
+     * Does not delete or update the original transaction. Instead, it creates a new
+     * REFUND transaction that inverses the flow of funds and links back to the original ledger entry.
+     * Validates that a transaction is not refunded more than once.
+     * </p>
+     *
+     * @param originaltransactionId The UUID of the transaction to reverse.
+     * @return The new {@link Transaction} representing the refund.
+     * @throws WebApplicationException (HTTP 409) if the transaction is already refunded.
+     */
+    @Transactional
+    public Transaction refund(UUID originaltransactionId) {
+        log.info("Iniciando estorno para a transação: " + originaltransactionId);
+
+        Transaction originaltransaction = Transaction.findById(originaltransactionId);
+        if (originaltransaction == null) {
+            throw new WebApplicationException("Original transaction not found", Response.Status.NOT_FOUND);
+        }
+
+        if (originaltransaction.type == TransactionType.REFUND) {
+            throw new WebApplicationException("Cannot refund a refund", Response.Status.BAD_REQUEST);
+        }
+
+        long alreadyRefunded = Transaction.find("originalTransaction", originaltransaction).count();
+        if (alreadyRefunded > 0) {
+            throw new WebApplicationException("Transaction has already been refunded", Response.Status.CONFLICT);
+        }
+
+        Account accountToDeduct = originaltransaction.destinationAccount;
+        Account accountToReceive = originaltransaction.originAccount;
+
+        if (accountToDeduct != null && accountToDeduct.balance.compareTo(originaltransaction.value) < 0) {
+            throw new WebApplicationException("Insufficient funds in destination account to process refund", Response.Status.PAYMENT_REQUIRED);
+        }
+
+        if (accountToDeduct != null) {
+            accountToDeduct.balance = accountToDeduct.balance.subtract(originaltransaction.value);
+        }
+        if (accountToReceive != null) {
+            accountToReceive.balance = accountToReceive.balance.add(originaltransaction.value);
+        }
+
+        Transaction refundtransaction = new Transaction();
+        refundtransaction.originAccount = accountToDeduct;
+        refundtransaction.destinationAccount = accountToReceive;
+        refundtransaction.value = originaltransaction.value;
+        refundtransaction.type = TransactionType.REFUND;
+        refundtransaction.originalTransaction = originaltransaction;
+        refundtransaction.description = "Estorno da transação: " + originaltransaction.id;
+
+        refundtransaction.persist();
+        return refundtransaction;
     }
 }
